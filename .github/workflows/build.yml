@@ -45,8 +45,8 @@ jobs:
           # إعادة توليد مفتاح التوقيع من السر المشفر الخاص بك
           echo "${{ secrets.KEYSTORE_FILE_BASE64 }}" | base64 -d > travian_release.keystore
           
-          # تشغيل أمر بناء نسخة رسمية موقعة بمفتاحك
-          buildozer android release
+          # تشغيل أمر بناء نسخة رسمية مع إجبار النظام على الموافقة على الرخص تلقائياً
+          yes | buildozer android release
           
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
