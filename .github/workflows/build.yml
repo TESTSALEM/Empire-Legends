@@ -16,12 +16,10 @@ jobs:
           # إذا فك الضغط داخل مجلد فرعي، انقل الملفات للمسار الرئيسي
           mv */* . 2>/dev/null || true 
 
-      # خطوة تلقائية لحل مشكلة تعارض إصدار البايثون دون تعديل ملفاتك محلياً
-      - name: Auto Patch Buildozer Requirements
+      # خطوة تلقائية لحل مشكلة تعارض إصدار البايثون وتثبيت الأدوات
+      - name: Auto Patch Buildozer Specs
         run: |
           sed -i 's/python3==3.11.9/python3/g' buildozer.spec
-
-          # لضمان عدم حدوث تعارض آخر في أدوات الأندرويد، سنثبت إصدار الـ build tools أيضاً تلقائياً
           sed -i '/android.sdk/a android.build_tools_version = 33.0.0' buildozer.spec
 
       - name: Set up JDK 17
@@ -35,10 +33,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      # تثبيت كامل أدوات التجميع الأساسية لضمان نجاح بناء Python-for-Android على Ubuntu 24.04
       - name: Install Buildozer and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsqlite3-dev lld libffi-dev libssl-dev
+          sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev libsqlite3-dev lld autoconf automake libtool pkg-config cmake
           pip install --upgrade pip
           pip install buildozer cython virtualenv
 
