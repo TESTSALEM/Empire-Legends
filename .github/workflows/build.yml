@@ -33,17 +33,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      # تثبيت كامل أدوات التجميع الأساسية لضمان نجاح بناء Python-for-Android على Ubuntu 24.04
+      # تثبيت كامل الحزم والمكتبات التطويرية وحزم الصور + تقييد إصدار Cython
       - name: Install Buildozer and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev libsqlite3-dev lld autoconf automake libtool pkg-config cmake
+          sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev libsqlite3-dev lld autoconf automake libtool pkg-config cmake zlib1g-dev libncurses5-dev libncursesw5-dev libgdbm-dev libreadline-dev libbz2-dev liblzma-dev uuid-dev libjpeg-dev libpng-dev
           pip install --upgrade pip
-          pip install buildozer cython virtualenv
+          pip install "cython<3.0" buildozer virtualenv
 
       - name: Build APK with Buildozer
         env:
-          # ربط الأسرار بمتغيرات نظام أندرويد الرسمية ليتعرف عليها تلقائياً أثناء بناء الـ Release
+          # ربط الأسرار بمتغيرات نظام أندرويد الرسمية
           P4A_RELEASE_KEYSTORE: travian_release.keystore
           P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
@@ -52,8 +52,20 @@ jobs:
           # إعادة توليد مفتاح التوقيع من السر المشفر الخاص بك
           echo "${{ secrets.KEYSTORE_FILE_BASE64 }}" | base64 -d > travian_release.keystore
           
-          # تشغيل أمر بناء نسخة رسمية مع إجبار النظام على الموافقة على الرخص تلقائياً
-          yes | buildozer android release
+          echo "🚀 جاري البناء وتجميع المكتبات في الخلفية (تم تنظيف الشاشة)..."
+          
+          # تشغيل البناء وحفظ المخرجات بالكامل في ملف نصي جانبي
+          yes | buildozer android release > buildozer.log 2>&1 || {
+            echo "------------------------------------------------------------------"
+            echo "❌ فشل البناء! إليك الأسطر الأخيرة المسببة للمشكلة الحقيقية:"
+            echo "------------------------------------------------------------------"
+            
+            # عرض آخر 250 سطر فقط وهي التي تحتوي على كود الخطأ الصافي
+            tail -n 250 buildozer.log
+            exit 1
+          }
+          
+          echo "✅ تم البناء بنجاح وبدون أي مشاكل!"
           
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
