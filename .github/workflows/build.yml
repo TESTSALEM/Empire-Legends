@@ -1,0 +1,55 @@
+Name: Build Android APK (Unzip Mode)
+on:
+  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بضغطة زر
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # فك ضغط مشروعك داخل الخادم السحابي
+      - name: Unzip Project Files
+        run: |
+          unzip project.zip
+          # إذا فك الضغط داخل مجلد فرعي، انقل الملفات للمسار الرئيسي
+          mv */* . 2>/dev/null || true 
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Buildozer and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev lld libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
+
+      - name: Build APK with Buildozer
+        env:
+          # ربط الأسرار بمتغيرات نظام أندرويد الرسمية ليتعرف عليها تلقائياً أثناء بناء الـ Release
+          P4A_RELEASE_KEYSTORE: travian_release.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.KEYSTORE_PASSWORD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # إعادة توليد مفتاح التوقيع من السر المشفر الخاص بك
+          echo "${{ secrets.KEYSTORE_FILE_BASE64 }}" | base64 -d > travian_release.keystore
+          
+          # تشغيل أمر بناء نسخة رسمية موقعة بمفتاحك
+          buildozer android release
+          
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Travian-Legends-Release-APK
+          path: bin/*.apk
