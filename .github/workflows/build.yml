@@ -1,4 +1,4 @@
-Name: Build Android APK (Unzip Mode)
+name: Build Android APK (Unzip Mode)
 on:
   workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بضغطة زر
 
