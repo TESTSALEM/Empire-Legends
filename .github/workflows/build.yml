@@ -1,4 +1,4 @@
-name: Build Travian Legends APK
+Name: Build Travian Legends APK
 
 on:
   workflow_dispatch:
@@ -38,6 +38,12 @@ jobs:
           else
             echo "No zip - using repo files"
           fi
+          
+          # 🛠️ تعديل تلقائي لإصدار بايثون داخل الملف المفكوك لحل مشكلة التضارب
+          if [ -f "buildozer.spec" ]; then
+            sed -i 's/python3==[0-9.]*/python3/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement in buildozer.spec"
+          fi
           ls -la
 
       - name: Set up Java 17
@@ -46,7 +52,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ✅ الإصلاح الأول: إصدار Python ثابت
       - name: Set up Python 3.11.9
         uses: actions/setup-python@v5
         with:
@@ -74,7 +79,6 @@ jobs:
           pip install cython==0.29.37
           pip install virtualenv
 
-      # ✅ الإصلاح الثاني: cache بدون ~/.gradle لتفادي مشاكل
       - name: Cache buildozer
         uses: actions/cache@v4
         with:
@@ -117,6 +121,12 @@ jobs:
             fi
             rm -rf extracted/
           fi
+          
+          # 🛠️ تعديل تلقائي لإصدار بايثون داخل الملف المفكوك لحل مشكلة التضارب
+          if [ -f "buildozer.spec" ]; then
+            sed -i 's/python3==[0-9.]*/python3/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement in buildozer.spec"
+          fi
           ls -la
 
       - name: Set up Java 17
@@ -125,7 +135,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ✅ الإصلاح الأول: إصدار Python ثابت
       - name: Set up Python 3.11.9
         uses: actions/setup-python@v5
         with:
