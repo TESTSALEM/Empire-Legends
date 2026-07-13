@@ -1,4 +1,4 @@
-Name: Build Travian Legends APK
+name: Build Travian Legends APK
 
 on:
   workflow_dispatch:
