@@ -39,10 +39,10 @@ jobs:
             echo "No zip - using repo files"
           fi
           
-          # 🛠️ تعديل تلقائي لإصدار بايثون داخل الملف المفكوك لحل مشكلة التضارب
+          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement in buildozer.spec"
+            sed -i 's/python3==[0-9.]*/python3==3.11/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement to 3.11 in buildozer.spec"
           fi
           ls -la
 
@@ -88,6 +88,8 @@ jobs:
 
       - name: Build DEBUG APK
         run: |
+          # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
+          set -o pipefail
           yes | buildozer -v android debug 2>&1 | tail -200
           echo "Build done"
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
@@ -122,10 +124,10 @@ jobs:
             rm -rf extracted/
           fi
           
-          # 🛠️ تعديل تلقائي لإصدار بايثون داخل الملف المفكوك لحل مشكلة التضارب
+          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement in buildozer.spec"
+            sed -i 's/python3==[0-9.]*/python3==3.11/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement to 3.11 in buildozer.spec"
           fi
           ls -la
 
@@ -183,6 +185,8 @@ jobs:
 
       - name: Build RELEASE APK
         run: |
+          # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
+          set -o pipefail
           yes | buildozer -v android release 2>&1 | tail -200
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
