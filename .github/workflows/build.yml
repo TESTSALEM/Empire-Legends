@@ -4,19 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'نوع البناء'
+        description: 'Build Type'
         required: true
-        default: 'both'
+        default: 'debug'
         type: choice
         options:
-          - debug           # نسخة تجريبية فقط
-          - release         # نسخة رسمية فقط
-          - both            # كلاهما
+          - debug
+          - release
+          - both
 
 jobs:
-  # ============================================================
-  # JOB 1: نسخة تجريبية DEBUG
-  # ============================================================
   build-debug:
     name: "Build Debug APK (Testing)"
     runs-on: ubuntu-22.04
@@ -37,9 +34,9 @@ jobs:
               cp -r extracted/. .
             fi
             rm -rf extracted/
-            echo "✅ Unzipped successfully"
+            echo "Unzipped OK"
           else
-            echo "✅ No zip found - using repo files directly"
+            echo "No zip - using repo files"
           fi
           ls -la
 
@@ -49,7 +46,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.11
+      # ✅ الإصلاح الأول: إصدار Python ثابت
+      - name: Set up Python 3.11.9
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.9'
@@ -69,39 +67,35 @@ jobs:
             lld ccache patchelf \
             libglib2.0-dev libjpeg-dev libpng-dev
 
-      - name: Install buildozer & cython
+      - name: Install buildozer
         run: |
           pip install --upgrade pip wheel
           pip install buildozer==1.5.0
           pip install cython==0.29.37
           pip install virtualenv
 
-      - name: Cache buildozer dependencies
+      # ✅ الإصلاح الثاني: cache بدون ~/.gradle لتفادي مشاكل
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.buildozer
-            ~/.gradle
+          path: ~/.buildozer
           key: buildozer-debug-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-debug-
 
       - name: Build DEBUG APK
         run: |
-          yes | buildozer -v android debug
-          echo "✅ Debug build complete"
-          ls -lh bin/*.apk 2>/dev/null || echo "❌ No APK found"
+          yes | buildozer -v android debug 2>&1 | tail -200
+          echo "Build done"
+          ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
       - name: Upload DEBUG APK
         uses: actions/upload-artifact@v4
         with:
-          name: "TravianLegends-DEBUG-${{ github.run_number }}"
+          name: "DEBUG-APK-${{ github.run_number }}"
           path: bin/*-debug.apk
           retention-days: 30
           if-no-files-found: warn
 
-  # ============================================================
-  # JOB 2: نسخة رسمية RELEASE (لـ Google Play)
-  # ============================================================
   build-release:
     name: "Build Release APK (Google Play)"
     runs-on: ubuntu-22.04
@@ -122,9 +116,6 @@ jobs:
               cp -r extracted/. .
             fi
             rm -rf extracted/
-            echo "✅ Unzipped successfully"
-          else
-            echo "✅ No zip found - using repo files directly"
           fi
           ls -la
 
@@ -134,7 +125,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.11
+      # ✅ الإصلاح الأول: إصدار Python ثابت
+      - name: Set up Python 3.11.9
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.9'
@@ -154,56 +146,47 @@ jobs:
             lld ccache patchelf \
             libglib2.0-dev libjpeg-dev libpng-dev
 
-      - name: Install buildozer & cython
+      - name: Install buildozer
         run: |
           pip install --upgrade pip wheel
           pip install buildozer==1.5.0
           pip install cython==0.29.37
           pip install virtualenv
 
-      - name: Cache buildozer dependencies
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.buildozer
-            ~/.gradle
+          path: ~/.buildozer
           key: buildozer-release-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-release-
 
-      - name: Setup signing keystore
+      - name: Setup keystore
         run: |
           if [ -z "${{ secrets.KEYSTORE_FILE_BASE64 }}" ]; then
-            echo "❌ KEYSTORE_FILE_BASE64 missing from Secrets!"
+            echo "ERROR: KEYSTORE_FILE_BASE64 missing!"
             exit 1
           fi
-          echo "${{ secrets.KEYSTORE_FILE_BASE64 }}" | base64 -d > travian_release.keystore
-          echo "✅ Keystore ready: $(ls -lh travian_release.keystore)"
-          echo "P4A_RELEASE_KEYSTORE=$(pwd)/travian_release.keystore" >> $GITHUB_ENV
+          echo "${{ secrets.KEYSTORE_FILE_BASE64 }}" | base64 -d > release.keystore
+          echo "P4A_RELEASE_KEYSTORE=$(pwd)/release.keystore" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYSTORE_PASSWD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Build RELEASE APK
         run: |
-          yes | buildozer -v android release
-          echo "✅ Release build complete"
-          ls -lh bin/*.apk 2>/dev/null || echo "❌ No APK found"
+          yes | buildozer -v android release 2>&1 | tail -200
+          ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
       - name: Upload RELEASE APK
         uses: actions/upload-artifact@v4
         with:
-          name: "TravianLegends-RELEASE-${{ github.run_number }}"
+          name: "RELEASE-APK-${{ github.run_number }}"
           path: bin/*-release.apk
           retention-days: 90
           if-no-files-found: error
 
-      - name: Build Summary
+      - name: Summary
         run: |
-          echo "========================================"
-          echo "  ✅ Release APK Built Successfully!"
-          echo "========================================"
-          echo "  Version: $(grep '^version' buildozer.spec | cut -d= -f2 | tr -d ' ')"
-          echo "  Size: $(ls -lh bin/*-release.apk 2>/dev/null | awk '{print $5}')"
-          echo "  Next: Upload to Google Play Console"
-          echo "  URL: https://play.google.com/console"
-          echo "========================================"
+          echo "Version: $(grep '^version' buildozer.spec | cut -d= -f2 | tr -d ' ')"
+          ls -lh bin/*-release.apk 2>/dev/null
+          echo "Next: upload to play.google.com/console"
