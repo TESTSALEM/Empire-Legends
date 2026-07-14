@@ -52,10 +52,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.11.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11.9'
+          python-version: '3.11'
 
       - name: Install system dependencies
         run: |
@@ -137,10 +137,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.11.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11.9'
+          python-version: '3.11'
 
       - name: Install system dependencies
         run: |
@@ -187,7 +187,7 @@ jobs:
         run: |
           # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
           set -o pipefail
-          yes | buildozer -v android release 2>&1 | tail -200
+          yes | buildozer -v android release 2>&1 | tail -300
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
       - name: Upload RELEASE APK
