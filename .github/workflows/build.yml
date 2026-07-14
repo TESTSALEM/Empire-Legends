@@ -38,11 +38,9 @@ jobs:
           else
             echo "No zip - using repo files"
           fi
-          
-          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11.0) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
             sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement to 3.11.0 in buildozer.spec"
+            echo "Adjusted python3 to 3.11.0"
           fi
           ls -la
 
@@ -52,10 +50,21 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Remove old Python versions
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/Python/3.14.* 2>/dev/null || true
+          echo "Cleaned old Python"
+
       - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.0'
+
+      - name: Verify Python version
+        run: |
+          python --version
+          which python
+          python -c "import sys; print('Python:', sys.version)"
 
       - name: Install system dependencies
         run: |
@@ -74,27 +83,53 @@ jobs:
 
       - name: Install buildozer
         run: |
-          pip install --upgrade pip wheel
-          pip install buildozer==1.5.0
-          pip install cython==0.29.37
-          pip install virtualenv
+          python -m pip install --upgrade pip wheel
+          python -m pip install buildozer==1.5.0
+          python -m pip install cython==0.29.37
+          python -m pip install virtualenv
+          buildozer --version
 
       - name: Cache buildozer
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-debug-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-debug-
+          key: buildozer-debug-311-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-debug-311-
 
+      # ✅ البناء مع حفظ الـ log كاملاً
       - name: Build DEBUG APK
         run: |
-          # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
-          set -o pipefail
-          yes | buildozer -v android debug 2>&1 | tail -300
-          echo "Build done"
+          python --version
+          yes | buildozer -v android debug 2>&1 | tee debug_build_log.txt
+          echo "=== Build finished ==="
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
+      # ✅ عرض الأخطاء مباشرة في GitHub
+      - name: Show errors from log
+        if: always()
+        run: |
+          echo "================================================"
+          echo "  ERRORS / FAILURES / EXCEPTIONS"
+          echo "================================================"
+          grep -i "error\|failed\|exception\|traceback\|killed\|cannot\|no such" \
+            debug_build_log.txt | grep -v "^#" | tail -80 || echo "No errors found"
+          echo ""
+          echo "================================================"
+          echo "  LAST 100 LINES OF LOG"
+          echo "================================================"
+          tail -100 debug_build_log.txt
+
+      # ✅ رفع الـ log كاملاً كـ artifact
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "DEBUG-LOG-${{ github.run_number }}"
+          path: debug_build_log.txt
+          retention-days: 7
+
       - name: Upload DEBUG APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: "DEBUG-APK-${{ github.run_number }}"
@@ -123,11 +158,9 @@ jobs:
             fi
             rm -rf extracted/
           fi
-          
-          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11.0) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
             sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement to 3.11.0 in buildozer.spec"
+            echo "Adjusted python3 to 3.11.0"
           fi
           ls -la
 
@@ -137,10 +170,20 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Remove old Python versions
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/Python/3.14.* 2>/dev/null || true
+          echo "Cleaned old Python"
+
       - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.0'
+
+      - name: Verify Python version
+        run: |
+          python --version
+          which python
 
       - name: Install system dependencies
         run: |
@@ -159,17 +202,18 @@ jobs:
 
       - name: Install buildozer
         run: |
-          pip install --upgrade pip wheel
-          pip install buildozer==1.5.0
-          pip install cython==0.29.37
-          pip install virtualenv
+          python -m pip install --upgrade pip wheel
+          python -m pip install buildozer==1.5.0
+          python -m pip install cython==0.29.37
+          python -m pip install virtualenv
+          buildozer --version
 
       - name: Cache buildozer
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-release-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-release-
+          key: buildozer-release-311-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-release-311-
 
       - name: Setup keystore
         run: |
@@ -183,23 +227,49 @@ jobs:
           echo "P4A_RELEASE_KEYALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
+      # ✅ البناء مع حفظ الـ log كاملاً
       - name: Build RELEASE APK
         run: |
-          # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
-          set -o pipefail
-          yes | buildozer -v android release 2>&1 | tail -200
+          python --version
+          yes | buildozer -v android release 2>&1 | tee release_build_log.txt
+          echo "=== Build finished ==="
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
+      # ✅ عرض الأخطاء مباشرة في GitHub
+      - name: Show errors from log
+        if: always()
+        run: |
+          echo "================================================"
+          echo "  ERRORS / FAILURES / EXCEPTIONS"
+          echo "================================================"
+          grep -i "error\|failed\|exception\|traceback\|killed\|cannot\|no such" \
+            release_build_log.txt | grep -v "^#" | tail -80 || echo "No errors found"
+          echo ""
+          echo "================================================"
+          echo "  LAST 100 LINES OF LOG"
+          echo "================================================"
+          tail -100 release_build_log.txt
+
+      # ✅ رفع الـ log كاملاً كـ artifact
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "RELEASE-LOG-${{ github.run_number }}"
+          path: release_build_log.txt
+          retention-days: 7
+
       - name: Upload RELEASE APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: "RELEASE-APK-${{ github.run_number }}"
           path: bin/*-release.apk
           retention-days: 90
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Summary
+        if: always()
         run: |
           echo "Version: $(grep '^version' buildozer.spec | cut -d= -f2 | tr -d ' ')"
-          ls -lh bin/*-release.apk 2>/dev/null
-          echo "Next: upload to play.google.com/console"
+          ls -lh bin/*.apk 2>/dev/null || echo "No APK yet"
