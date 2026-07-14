@@ -39,10 +39,10 @@ jobs:
             echo "No zip - using repo files"
           fi
           
-          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11) بدلاً من تركه مفتوحاً لـ 3.14
+          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11.0) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3==3.11/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement to 3.11 in buildozer.spec"
+            sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement to 3.11.0 in buildozer.spec"
           fi
           ls -la
 
@@ -52,10 +52,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.14.2
+      - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.2'
+          python-version: '3.11.0'
 
       - name: Install system dependencies
         run: |
@@ -124,10 +124,10 @@ jobs:
             rm -rf extracted/
           fi
           
-          # 🛠️ تحديد إصدار مستقر ومتوافق (3.14.2) بدلاً من تركه مفتوحاً لـ 3.14
+          # 🛠️ تحديد إصدار مستقر ومتوافق (3.11.0) بدلاً من تركه مفتوحاً لـ 3.14
           if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3==3.11/g' buildozer.spec
-            echo "✅ Adjusted python3 requirement to 3.11 in buildozer.spec"
+            sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
+            echo "✅ Adjusted python3 requirement to 3.11.0 in buildozer.spec"
           fi
           ls -la
 
@@ -137,10 +137,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Python 3.14.2
+      - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.2'
+          python-version: '3.11.0'
 
       - name: Install system dependencies
         run: |
