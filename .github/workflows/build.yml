@@ -90,7 +90,7 @@ jobs:
         run: |
           # 🛠️ إضافة pipefail لمنع إخفاء الأخطاء الحقيقية بسبب tail
           set -o pipefail
-          yes | buildozer -v android debug 2>&1 | tail -200
+          yes | buildozer -v android debug 2>&1 | tail -300
           echo "Build done"
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
