@@ -66,13 +66,8 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      # ✅ مسح الـ venv القديم التالف من الـ cache
-      - name: Clean corrupted venv from cache
-        run: |
-          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
-          echo "Cleaned old venv"
-
-      - name: Cache buildozer (بدون venv)
+      # 1️⃣ أولاً: استعادة الـ cache
+      - name: Cache buildozer (no venv)
         uses: actions/cache@v4
         with:
           path: |
@@ -83,6 +78,13 @@ jobs:
           key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-deps-
 
+      # 2️⃣ ثانياً: تنظيف venv التالف بعد استعادة الـ cache
+      - name: Fix corrupted venv
+        run: |
+          find ~/.buildozer -name "venv" -type d | xargs rm -rf 2>/dev/null || true
+          echo "Venv cleaned: $(find ~/.buildozer -name 'venv' -type d | wc -l) remaining"
+
+      # 3️⃣ ثالثاً: البناء
       - name: Build DEBUG APK
         run: |
           python --version
@@ -167,11 +169,8 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      - name: Clean corrupted venv from cache
-        run: |
-          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
-
-      - name: Cache buildozer (بدون venv)
+      # 1️⃣ أولاً: استعادة الـ cache
+      - name: Cache buildozer (no venv)
         uses: actions/cache@v4
         with:
           path: |
@@ -181,6 +180,12 @@ jobs:
             ~/.buildozer/android/packages
           key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-deps-
+
+      # 2️⃣ ثانياً: تنظيف venv التالف
+      - name: Fix corrupted venv
+        run: |
+          find ~/.buildozer -name "venv" -type d | xargs rm -rf 2>/dev/null || true
+          echo "Venv cleaned"
 
       - name: Setup keystore
         run: |
@@ -194,6 +199,7 @@ jobs:
           echo "P4A_RELEASE_KEYALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
+      # 3️⃣ ثالثاً: البناء
       - name: Build RELEASE APK
         run: |
           python --version
