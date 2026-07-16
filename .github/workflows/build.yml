@@ -66,8 +66,8 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      # 1️⃣ أولاً: استعادة الـ cache
-      - name: Cache buildozer (no venv)
+      # 1️⃣ استعادة الـ cache (SDK + NDK + p4a فقط - بدون build folder)
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
           path: |
@@ -78,13 +78,16 @@ jobs:
           key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-deps-
 
-      # 2️⃣ ثانياً: تنظيف venv التالف بعد استعادة الـ cache
+      # 2️⃣ مسح المسار الحقيقي للـ venv التالف
       - name: Fix corrupted venv
         run: |
-          find ~/.buildozer -name "venv" -type d | xargs rm -rf 2>/dev/null || true
-          echo "Venv cleaned: $(find ~/.buildozer -name 'venv' -type d | wc -l) remaining"
+          # المسار الحقيقي للـ venv التالف
+          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
+          rm -rf ~/.buildozer/android/platform/build-arm64-v8a_armeabi-v7a 2>/dev/null || true
+          echo "Removed corrupted build directories"
+          echo "Remaining venv dirs: $(find ~/.buildozer -name 'venv' -type d 2>/dev/null | wc -l)"
 
-      # 3️⃣ ثالثاً: البناء
+      # 3️⃣ البناء
       - name: Build DEBUG APK
         run: |
           python --version
@@ -95,10 +98,10 @@ jobs:
         if: always()
         run: |
           echo "=== ERRORS ==="
-          grep -i "error\|failed\|exception\|importerror" debug_build_log.txt \
-            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -30
-          echo "=== LAST 30 LINES ==="
-          tail -30 debug_build_log.txt
+          grep -i "importerror\|error\|failed\|traceback" debug_build_log.txt \
+            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -20
+          echo "=== LAST 20 LINES ==="
+          tail -20 debug_build_log.txt
 
       - name: Upload build log
         if: always()
@@ -169,8 +172,8 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      # 1️⃣ أولاً: استعادة الـ cache
-      - name: Cache buildozer (no venv)
+      # 1️⃣ استعادة الـ cache
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
           path: |
@@ -181,11 +184,12 @@ jobs:
           key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-deps-
 
-      # 2️⃣ ثانياً: تنظيف venv التالف
+      # 2️⃣ مسح المسار الحقيقي للـ venv التالف
       - name: Fix corrupted venv
         run: |
-          find ~/.buildozer -name "venv" -type d | xargs rm -rf 2>/dev/null || true
-          echo "Venv cleaned"
+          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
+          rm -rf ~/.buildozer/android/platform/build-arm64-v8a_armeabi-v7a 2>/dev/null || true
+          echo "Removed corrupted build directories"
 
       - name: Setup keystore
         run: |
@@ -199,7 +203,7 @@ jobs:
           echo "P4A_RELEASE_KEYALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-      # 3️⃣ ثالثاً: البناء
+      # 3️⃣ البناء
       - name: Build RELEASE APK
         run: |
           python --version
@@ -210,10 +214,10 @@ jobs:
         if: always()
         run: |
           echo "=== ERRORS ==="
-          grep -i "error\|failed\|exception\|importerror" release_build_log.txt \
-            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -30
-          echo "=== LAST 30 LINES ==="
-          tail -30 release_build_log.txt
+          grep -i "importerror\|error\|failed\|traceback" release_build_log.txt \
+            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -20
+          echo "=== LAST 20 LINES ==="
+          tail -20 release_build_log.txt
 
       - name: Upload build log
         if: always()
