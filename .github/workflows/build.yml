@@ -34,13 +34,6 @@ jobs:
               cp -r extracted/. .
             fi
             rm -rf extracted/
-            echo "Unzipped OK"
-          else
-            echo "No zip - using repo files"
-          fi
-          if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
-            echo "Adjusted python3 to 3.11.0"
           fi
           ls -la
 
@@ -50,36 +43,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Remove old Python versions
-        run: |
-          sudo rm -rf /opt/hostedtoolcache/Python/3.14.* 2>/dev/null || true
-          echo "Cleaned old Python"
-
       - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.0'
-
-      - name: Verify Python version
-        run: |
-          python --version
-          which python
-          python -c "import sys; print('Python:', sys.version)"
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y \
-            git zip unzip wget curl \
-            python3-pip python3-dev \
-            autoconf automake libtool \
-            pkg-config libffi-dev libssl-dev \
-            zlib1g-dev libncurses5-dev \
-            libncursesw5-dev libtinfo5 \
-            cmake build-essential \
-            libsqlite3-dev sqlite3 \
-            lld ccache patchelf \
-            libglib2.0-dev libjpeg-dev libpng-dev
 
       - name: Install buildozer
         run: |
@@ -87,39 +54,50 @@ jobs:
           python -m pip install buildozer==1.5.0
           python -m pip install cython==0.29.37
           python -m pip install virtualenv
-          buildozer --version
 
-      - name: Cache buildozer
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            git zip unzip wget curl \
+            python3-dev autoconf automake libtool \
+            pkg-config libffi-dev libssl-dev \
+            zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake build-essential libsqlite3-dev sqlite3 \
+            lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
+
+      # ✅ مسح الـ venv القديم التالف من الـ cache
+      - name: Clean corrupted venv from cache
+        run: |
+          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
+          echo "Cleaned old venv"
+
+      - name: Cache buildozer (بدون venv)
         uses: actions/cache@v4
         with:
-          path: ~/.buildozer
-          key: buildozer-debug-311-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-debug-311-
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-r25b
+            ~/.buildozer/android/platform/python-for-android
+            ~/.buildozer/android/packages
+          key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-deps-
 
-      # ✅ البناء مع حفظ الـ log كاملاً
       - name: Build DEBUG APK
         run: |
           python --version
           yes | buildozer -v android debug 2>&1 | tee debug_build_log.txt
-          echo "=== Build finished ==="
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
-      # ✅ عرض الأخطاء مباشرة في GitHub
-      - name: Show errors from log
+      - name: Show errors
         if: always()
         run: |
-          echo "================================================"
-          echo "  ERRORS / FAILURES / EXCEPTIONS"
-          echo "================================================"
-          grep -i "error\|failed\|exception\|traceback\|killed\|cannot\|no such" \
-            debug_build_log.txt | grep -v "^#" | tail -80 || echo "No errors found"
-          echo ""
-          echo "================================================"
-          echo "  LAST 100 LINES OF LOG"
-          echo "================================================"
-          tail -100 debug_build_log.txt
+          echo "=== ERRORS ==="
+          grep -i "error\|failed\|exception\|importerror" debug_build_log.txt \
+            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -30
+          echo "=== LAST 30 LINES ==="
+          tail -30 debug_build_log.txt
 
-      # ✅ رفع الـ log كاملاً كـ artifact
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,10 +136,6 @@ jobs:
             fi
             rm -rf extracted/
           fi
-          if [ -f "buildozer.spec" ]; then
-            sed -i 's/python3==[0-9.]*/python3==3.11.0/g' buildozer.spec
-            echo "Adjusted python3 to 3.11.0"
-          fi
           ls -la
 
       - name: Set up Java 17
@@ -170,50 +144,43 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Remove old Python versions
-        run: |
-          sudo rm -rf /opt/hostedtoolcache/Python/3.14.* 2>/dev/null || true
-          echo "Cleaned old Python"
-
       - name: Set up Python 3.11.0
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.0'
-
-      - name: Verify Python version
-        run: |
-          python --version
-          which python
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y \
-            git zip unzip wget curl \
-            python3-pip python3-dev \
-            autoconf automake libtool \
-            pkg-config libffi-dev libssl-dev \
-            zlib1g-dev libncurses5-dev \
-            libncursesw5-dev libtinfo5 \
-            cmake build-essential \
-            libsqlite3-dev sqlite3 \
-            lld ccache patchelf \
-            libglib2.0-dev libjpeg-dev libpng-dev
 
       - name: Install buildozer
         run: |
           python -m pip install --upgrade pip wheel
           python -m pip install buildozer==1.5.0
           python -m pip install cython==0.29.37
-          
-          buildozer --version
+          python -m pip install virtualenv
 
-      - name: Cache buildozer
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            git zip unzip wget curl \
+            python3-dev autoconf automake libtool \
+            pkg-config libffi-dev libssl-dev \
+            zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake build-essential libsqlite3-dev sqlite3 \
+            lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
+
+      - name: Clean corrupted venv from cache
+        run: |
+          rm -rf ~/.buildozer/android/platform/build-*/build/venv 2>/dev/null || true
+
+      - name: Cache buildozer (بدون venv)
         uses: actions/cache@v4
         with:
-          path: ~/.buildozer
-          key: buildozer-release-311-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-release-311-
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-r25b
+            ~/.buildozer/android/platform/python-for-android
+            ~/.buildozer/android/packages
+          key: buildozer-deps-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-deps-
 
       - name: Setup keystore
         run: |
@@ -227,30 +194,21 @@ jobs:
           echo "P4A_RELEASE_KEYALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-      # ✅ البناء مع حفظ الـ log كاملاً
       - name: Build RELEASE APK
         run: |
           python --version
           yes | buildozer -v android release 2>&1 | tee release_build_log.txt
-          echo "=== Build finished ==="
           ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
 
-      # ✅ عرض الأخطاء مباشرة في GitHub
-      - name: Show errors from log
+      - name: Show errors
         if: always()
         run: |
-          echo "================================================"
-          echo "  ERRORS / FAILURES / EXCEPTIONS"
-          echo "================================================"
-          grep -i "error\|failed\|exception\|traceback\|killed\|cannot\|no such" \
-            release_build_log.txt | grep -v "^#" | tail -80 || echo "No errors found"
-          echo ""
-          echo "================================================"
-          echo "  LAST 100 LINES OF LOG"
-          echo "================================================"
-          tail -100 release_build_log.txt
+          echo "=== ERRORS ==="
+          grep -i "error\|failed\|exception\|importerror" release_build_log.txt \
+            | grep -v "^#\|GITHUB_\|RUNNER_" | tail -30
+          echo "=== LAST 30 LINES ==="
+          tail -30 release_build_log.txt
 
-      # ✅ رفع الـ log كاملاً كـ artifact
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
