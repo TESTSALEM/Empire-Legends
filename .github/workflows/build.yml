@@ -48,17 +48,13 @@ jobs:
         with:
           python-version: '3.11.0'
 
-      # ✅ الإصلاح الجذري: تثبيت pip متوافق مع Python 3.11
-      - name: Install compatible pip and buildozer
+      - name: Install buildozer
         run: |
-          # تثبيت pip إصدار متوافق مع resolvelib
           python -m pip install --upgrade "pip==23.3.2"
           python -m pip install "buildozer==1.5.0"
           python -m pip install "cython==0.29.37"
           python -m pip install "virtualenv==20.24.6"
           python -m pip install "setuptools==68.2.2"
-          # التحقق
-          python -m pip --version
           buildozer --version
 
       - name: Install system dependencies
@@ -72,41 +68,60 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      - name: Cache buildozer
+      - name: Cache buildozer SDK/NDK/packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer/android/platform/android-sdk
             ~/.buildozer/android/platform/android-ndk-r25b
-            ~/.buildozer/android/platform/python-for-android
             ~/.buildozer/android/packages
-          key: buildozer-final-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-final-
+          key: buildozer-sdkndk-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-sdkndk-
 
-      # ✅ إصلاح pip داخل الـ venv بعد إنشائه
-      - name: Patch p4a to fix pip in venv
+      # ✅ الحل الجذري: clone p4a مسبقاً وpatch الكود المعطوب
+      - name: Pre-clone and patch python-for-android
         run: |
           P4A_DIR="$HOME/.buildozer/android/platform/python-for-android"
-          if [ -d "$P4A_DIR" ]; then
-            # إصلاح السكريبت الذي ينشئ الـ venv
-            find "$P4A_DIR" -name "*.py" | xargs grep -l "pip install -U pip" 2>/dev/null | while read f; do
-              sed -i 's/pip install -U pip/pip install -U "pip==23.3.2"/g' "$f"
-              echo "Patched: $f"
-            done
+          mkdir -p "$(dirname $P4A_DIR)"
+
+          # استنساخ p4a إذا لم يكن موجوداً
+          if [ ! -d "$P4A_DIR/.git" ]; then
+            echo "Cloning python-for-android..."
+            git clone --branch master --depth 1 \
+              https://github.com/kivy/python-for-android.git "$P4A_DIR"
+            echo "Clone done"
+          else
+            echo "p4a already exists"
           fi
-          echo "Patch complete"
+
+          # البحث عن أمر pip التالف وتصحيحه
+          echo "Patching pip upgrade commands..."
+          grep -rl "pip install -U pip\|pip install --upgrade pip" "$P4A_DIR" 2>/dev/null \
+          | grep "\.py$" | while read f; do
+            sed -i \
+              -e 's|pip install -U pip|pip install "pip==23.3.2" "setuptools>=65" "wheel>=0.38"|g' \
+              -e 's|pip install --upgrade pip|pip install "pip==23.3.2" "setuptools>=65" "wheel>=0.38"|g' \
+              "$f"
+            echo "  Patched: $f"
+          done
+
+          # التحقق من التصحيح
+          echo "Verification:"
+          grep -r "pip==23.3.2" "$P4A_DIR" | grep "\.py:" | head -5
 
       - name: Build DEBUG APK
         run: |
           python --version
           yes | buildozer -v android debug 2>&1 | tee debug_build_log.txt
-          ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
+          echo "=== APK Search ==="
+          find . -name "*.apk" 2>/dev/null
+          ls -lh bin/*.apk 2>/dev/null || echo "No APK in bin/"
 
       - name: Show errors
         if: always()
         run: |
-          echo "=== ERRORS ==="
-          grep -i "importerror\|\[ERROR\]\|failed\|traceback" debug_build_log.txt \
+          echo "=== KEY ERRORS ==="
+          grep -i "importerror\|\[ERROR\]\|command failed\|traceback" debug_build_log.txt \
             | grep -v "^#\|GITHUB_\|RUNNER_" | tail -20
           echo "=== LAST 20 LINES ==="
           tail -20 debug_build_log.txt
@@ -162,15 +177,13 @@ jobs:
         with:
           python-version: '3.11.0'
 
-      - name: Install compatible pip and buildozer
+      - name: Install buildozer
         run: |
           python -m pip install --upgrade "pip==23.3.2"
           python -m pip install "buildozer==1.5.0"
           python -m pip install "cython==0.29.37"
           python -m pip install "virtualenv==20.24.6"
           python -m pip install "setuptools==68.2.2"
-          python -m pip --version
-          buildozer --version
 
       - name: Install system dependencies
         run: |
@@ -183,27 +196,34 @@ jobs:
             cmake build-essential libsqlite3-dev sqlite3 \
             lld ccache patchelf libglib2.0-dev libjpeg-dev libpng-dev
 
-      - name: Cache buildozer
+      - name: Cache buildozer SDK/NDK/packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer/android/platform/android-sdk
             ~/.buildozer/android/platform/android-ndk-r25b
-            ~/.buildozer/android/platform/python-for-android
             ~/.buildozer/android/packages
-          key: buildozer-final-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-final-
+          key: buildozer-sdkndk-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-sdkndk-
 
-      - name: Patch p4a to fix pip in venv
+      # ✅ نفس الحل الجذري
+      - name: Pre-clone and patch python-for-android
         run: |
           P4A_DIR="$HOME/.buildozer/android/platform/python-for-android"
-          if [ -d "$P4A_DIR" ]; then
-            find "$P4A_DIR" -name "*.py" | xargs grep -l "pip install -U pip" 2>/dev/null | while read f; do
-              sed -i 's/pip install -U pip/pip install -U "pip==23.3.2"/g' "$f"
-              echo "Patched: $f"
-            done
+          mkdir -p "$(dirname $P4A_DIR)"
+          if [ ! -d "$P4A_DIR/.git" ]; then
+            git clone --branch master --depth 1 \
+              https://github.com/kivy/python-for-android.git "$P4A_DIR"
           fi
-          echo "Patch complete"
+          grep -rl "pip install -U pip\|pip install --upgrade pip" "$P4A_DIR" 2>/dev/null \
+          | grep "\.py$" | while read f; do
+            sed -i \
+              -e 's|pip install -U pip|pip install "pip==23.3.2" "setuptools>=65" "wheel>=0.38"|g' \
+              -e 's|pip install --upgrade pip|pip install "pip==23.3.2" "setuptools>=65" "wheel>=0.38"|g' \
+              "$f"
+            echo "Patched: $f"
+          done
+          grep -r "pip==23.3.2" "$P4A_DIR" | grep "\.py:" | head -5
 
       - name: Setup keystore
         run: |
@@ -221,13 +241,14 @@ jobs:
         run: |
           python --version
           yes | buildozer -v android release 2>&1 | tee release_build_log.txt
-          ls -lh bin/*.apk 2>/dev/null || echo "No APK found"
+          find . -name "*.apk" 2>/dev/null
+          ls -lh bin/*.apk 2>/dev/null || echo "No APK in bin/"
 
       - name: Show errors
         if: always()
         run: |
-          echo "=== ERRORS ==="
-          grep -i "importerror\|\[ERROR\]\|failed\|traceback" release_build_log.txt \
+          echo "=== KEY ERRORS ==="
+          grep -i "importerror\|\[ERROR\]\|command failed\|traceback" release_build_log.txt \
             | grep -v "^#\|GITHUB_\|RUNNER_" | tail -20
           echo "=== LAST 20 LINES ==="
           tail -20 release_build_log.txt
